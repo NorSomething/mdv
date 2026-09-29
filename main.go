@@ -10,44 +10,13 @@ import (
 	"github.com/charmbracelet/glamour"
 )
 
-const longMarkdown = ``
-
-Welcome to your **bespoke** terminal reading experience! This layout uses a fully customized stylesheet.
-
-## 🛠 Features Implemented:
-1. **Interactive Viewport**: Use your arrow keys, Page Up/Down, or mouse wheel to scroll.
-2. **Bespoke Theme**: Changed headings to a custom color, added a left border margin, and customized the blockquote style.
-3. **Dynamic Reflow**: Automatically updates line-wrapping when you resize your window.
-
-### Sample Code Blocks
-` + "```go" + `
-package main
-
-import "fmt"
-
-func main() {
-    fmt.Println("Syntax highlighting matches your theme!")
+type model struct {
+	viewport viewport.Model
+	ready    bool
+	width    int
+	height   int
+	content  string
 }
-` + "```" + `
-
-> "The details are not the details. They make the design."
-> — Charles Eames
-
-### Scroll down to read more...
-* Item A
-* Item B
-* Item C
-* Item D
-* Item E
-* Item F
-* Item G
-* Item H
-* Item I
-* Item J
-
----
-*End of Document*
-`
 
 var custom_theme = []byte(`{
 	"document": {
@@ -58,11 +27,11 @@ var custom_theme = []byte(`{
 		"bold": true,
 		"upper": true
 	},
-	"heading_2": {
+	"h2": {
 		"color": "#8888FF",
 		"bold": true
 	},
-	"blockquote": {
+	"block_quote": {
 		"color": "#FFB86C",
 		"italic": true,
 		"indent": 4
@@ -71,16 +40,10 @@ var custom_theme = []byte(`{
 		"color": "#FF5555"
 	},
 	"code_block": {
-		"margin": 2
+		"margin": 2,
+		"theme": "dracula"
 	}
 }`)
-
-type model struct {
-	viewport viewport.Model
-	ready    bool
-	width    int
-	height   int
-}
 
 func (m model) Init() tea.Cmd {
 	return nil
@@ -133,7 +96,7 @@ func (m model) View() string {
 		return "not initialized"
 	}
 
-	header := fmt.Sprintf("Reader [%d%%]", int(m.viewport.ScrollPercent()*100))
+	header := fmt.Sprintf("mdv [%d%%]", int(m.viewport.ScrollPercent()*100))
 
 	footer := fmt.Sprintf("Press 'q' to quit")
 
@@ -146,11 +109,23 @@ func (m model) render_markdown() (string, error) {
 		return "", err
 	}
 
-	return r.Render(longMarkdown)
+	return r.Render(m.content)
 }
 
 func main() {
-	p := tea.NewProgram(model{}, tea.WithAltScreen(), tea.WithMouseCellMotion())
+
+	if len(os.Args) < 2 {
+		fmt.Println("Usage: reader <file.md>")
+		os.Exit(1)
+	}
+
+	md, err := os.ReadFile(os.Args[1])
+	if err != nil {
+		fmt.Println("something went wrong when reading the file: ", err)
+		os.Exit(1)
+	}
+
+	p := tea.NewProgram(model{content: string(md)}, tea.WithAltScreen(), tea.WithMouseCellMotion())
 
 	if _, err := p.Run(); err != nil {
 		fmt.Println("Error:", err)
